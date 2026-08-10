@@ -13,8 +13,8 @@ PBF_PATH = os.path.join(
     "data", "osm", "california-260728.osm.pbf"
 )  # Input: OpenStreetMap PBF extract
 STATIONS_PATH = STATION_COORDS  # Input: station coordinate CSV
-CACHE_PATH = os.path.join(
-    "data", "osm", "california_roads.pkl"
+OSM_CACHE_PATH = os.path.join(
+    "data", "cache", "california_roads.pkl"
 )  # Cache: extracted road network
 OUTPUT_PATH = os.path.join(
     "data", "osm", "station_speed_limits.csv"
@@ -40,10 +40,10 @@ class RoadHandler(osmium.SimpleHandler):
 
 
 def load_roads():
-    if os.path.exists(CACHE_PATH):
+    if os.path.exists(OSM_CACHE_PATH):
         print("Loading road cache...")
         start = time.time()
-        with open(CACHE_PATH, "rb") as f:
+        with open(OSM_CACHE_PATH, "rb") as f:
             roads = pickle.load(f)
         print(
             f"Loaded {len(roads):,} cached roads " f"in {time.time()-start:.2f}s",
@@ -58,9 +58,9 @@ def load_roads():
     roads = handler.roads
     print(f"Extracted {len(roads):,} roads " f"in {time.time()-start:.2f}s", end="\r")
     print("Saving road cache...")
-    with open(CACHE_PATH, "wb") as f:
+    with open(OSM_CACHE_PATH, "wb") as f:
         pickle.dump(roads, f)
-    print(f"Saved cache: {CACHE_PATH}")
+    print(f"Saved cache: {OSM_CACHE_PATH}")
     return roads
 
 
@@ -94,7 +94,7 @@ def get_speed_limits(station_data):
     start = time.time()
     for i, road in enumerate(roads):
         for point in road["coords"]:
-            # save every road coordinate and their corresponding speed limit 
+            # save every road coordinate and their corresponding speed limit
             road_points.append(point)
             road_speed.append(road["maxspeed"])
         if i % 50000 == 0 and i > 0:

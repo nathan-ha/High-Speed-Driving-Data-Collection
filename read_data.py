@@ -1,4 +1,5 @@
 import os
+import pickle
 from csv import reader
 from pathlib import Path
 
@@ -23,7 +24,6 @@ def read_data(station_data):
             for row in csv_reader:
                 timestamp = row[0]
                 station = row[1]
-                district = row[2]
                 route = row[3]
                 travel_direction = row[4]
                 lane_type = row[5]
@@ -33,13 +33,7 @@ def read_data(station_data):
                 total_flow = row[9]
                 avg_occupancy = row[10]
                 avg_speed = row[11]
-                delay_35 = row[12]
-                delay_40 = row[13]
-                delay_45 = row[14]
-                delay_50 = row[15]
-                delay_55 = row[16]
-                delay_60 = row[17]
-                    
+
                 if station not in station_data:
                     station_data[station] = {
                         "route": route,
@@ -62,7 +56,6 @@ def read_data(station_data):
                 if count % 10000 == 0:
                     print(f"Read {count:,} data rows...", end="\r")
     print(f"Read {count:,} data rows...")
-    
 
 
 # puts data from station metadata into a dictionary
@@ -98,25 +91,23 @@ def read_metadata(station_data):
                     station_type = row[11]
                     lanes = row[12]
                     name = row[13]
-                    user_id_1 = row[14]
-                    user_id_2 = row[15]
-                    user_id_3 = row[16]
-                    user_id_4 = row[17]
 
-                    station_data[station].update({
-                        "freeway_number": freeway_number,
-                        "freeway_direction": freeway_direction,
-                        "county": county,
-                        "city": city,
-                        "state_postmile": state_postmile,
-                        "absolute_postmile": absolute_postmile,
-                        "latitude": latitude,
-                        "longitude": longitude,
-                        "length": length,
-                        "type": station_type,
-                        "num_lanes": lanes,
-                        "name": name,
-                    })
+                    station_data[station].update(
+                        {
+                            "freeway_number": freeway_number,
+                            "freeway_direction": freeway_direction,
+                            "county": county,
+                            "city": city,
+                            "state_postmile": state_postmile,
+                            "absolute_postmile": absolute_postmile,
+                            "latitude": latitude,
+                            "longitude": longitude,
+                            "length": length,
+                            "type": station_type,
+                            "num_lanes": lanes,
+                            "name": name,
+                        }
+                    )
 
                     f.write(f"{station},{latitude},{longitude}\n")
 

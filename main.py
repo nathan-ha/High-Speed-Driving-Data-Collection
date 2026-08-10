@@ -1,39 +1,14 @@
-from read_data import *
-from osm_get_speed_limits import get_speed_limits
+from setup import *
+
+RESULTS_DIR = os.path.join("data", "results")
+RESULTS_SPEED_BIN_PATH = os.path.join(RESULTS_DIR, "speed_bin.csv")
 
 if __name__ == "__main__":
-  station_data = {}
-  print("Reading station hourly data...")
-  read_data(station_data)
-  print("Reading station metadata...")
-  read_metadata(station_data)
-  print("Reading OSM data...")
-  get_speed_limits(station_data)
-  print("Finished reading data...")
+    station_data = {}
+    setup(station_data)
 
-  # where people are speeding over 65..80mph
-  speeding_data = {}
+#     VMT distribution by 5-mph speed bin and time of day
 
-  # get speed limit data
 
-  # loop thru station data
-#   num_speeders = 0
-#   thresholds = [80, 75, 70, 65, 60]
-#   for key, value in station_data.items():
-#       for threshold in thresholds:
-#           if value["avg_speed"] > threshold:
-#               # filters out speeding data
-#               speeding_data[threshold] = {
-#                   "latitude": value["latitude"],
-#                   "longitude": value["longitude"],
-#               }
-#               thresholds += 1
-#               break
-
-  # get percent ppl that speed
-
-  
-  # display on map
-  
-  # color code by speed
-
+# VMT fraction above 65, 70, 75, 80, 85, and 90 mph
+# Fraction of VMT above posted speed limit, speed limit +5 mph, and speed limit +10 mph
