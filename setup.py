@@ -17,7 +17,7 @@ def setup(station_data):
 
     # create data directories if they don't already exist
     base_dir = "data"
-    subdirs = ["cache", "osm", "station_hourly", "station_metadata"]
+    subdirs = ["cache", "osm", "station_hourly", "station_metadata", "results"]
     for sub in subdirs:
         curr_dir = os.path.join(base_dir, sub)
         os.makedirs(curr_dir, exist_ok=True)

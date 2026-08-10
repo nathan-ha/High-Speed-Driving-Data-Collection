@@ -7,7 +7,7 @@ DATA_PATH = os.path.join(
     "data", "station_hourly"
 )  # Input: directory containing hourly station data
 METADATA_PATH = os.path.join(
-    "data", "station_metadata"
+    "data", "station_meta"
 )  # Input: directory containing station metadata files
 STATION_COORDS = os.path.join(
     "data", "station_coordinates.csv"
@@ -20,6 +20,7 @@ def read_data(station_data):
     pathlist = Path(DATA_PATH).rglob("*.txt")
     for path in pathlist:
         with open(str(path)) as csv_file:
+            district = int(os.path.basename(str(path))[1:3]) # get district from file name
             csv_reader = reader(csv_file)
             for row in csv_reader:
                 timestamp = row[0]
@@ -36,6 +37,7 @@ def read_data(station_data):
 
                 if station not in station_data:
                     station_data[station] = {
+                        "district": district,
                         "route": route,
                         "travel_direction": travel_direction,
                         "lane_type": lane_type,

@@ -84,7 +84,7 @@ def to_xyz(lat, lon):
 
 
 def get_speed_limits(station_data):
-    print("\n===== STARTING SPEED LIMIT EXTRACTION =====\n")
+    print("STARTING SPEED LIMIT EXTRACTION")
     roads = load_roads()
     print(f"Preparing {len(roads):,} roads for KD-tree...", end="\r")
 
@@ -157,5 +157,4 @@ def get_speed_limits(station_data):
         if i % 10000 == 0:
             print(f"  Updated {i:,} stations...", end="\r")
     print("Speed limits added to station dictionary.")
-    print("\n===== GET SPEED LIMIT COMPLETE =====")
     print(f"Speed Limit Output: {OUTPUT_PATH}")
