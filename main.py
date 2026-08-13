@@ -10,11 +10,21 @@ if __name__ == "__main__":
     station_data = {}
     setup(station_data)
 
+
+    # plan:
+    # for each freeway:
+    #     for each station:
+    #         get average speeds across all timestamps
+    #         get average flow across all timestamps
+    #         calculate average VMT using flow
+    #         bin average speed for that station, add VMT to bin
+
     #     VMT distribution by 5-mph speed bin and time of day
     # {district : {#mph : occurrences}}
     print("Creating Speed Bins...")
     bins = defaultdict(lambda: defaultdict(int))  # auto initialize bins to 0
     for station, data in station_data.items():
+        # filter invalid speeds
         speeds = [
             float(speed)
             for speed in station_data[station]["avg_speed"].values()

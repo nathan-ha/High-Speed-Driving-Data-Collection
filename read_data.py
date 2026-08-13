@@ -35,6 +35,11 @@ def read_data(station_data):
                 avg_occupancy = row[10]
                 avg_speed = row[11]
 
+                # TODO remove this line when scaling program up
+                # only analyze the 10 freeway right now
+                if int(route) != 10:
+                    continue 
+
                 if station not in station_data:
                     station_data[station] = {
                         "district": district,
