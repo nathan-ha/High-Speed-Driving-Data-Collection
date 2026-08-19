@@ -115,7 +115,7 @@ def get_speed_limits(station_data):
     print(f"KD-tree built in {time.time()-start:.2f}s")
 
     # Load stations
-    print("\nLoading stations...")
+    print("Loading stations...")
     with open(STATIONS_PATH, newline="") as f:
         reader = csv.DictReader(f)
         stations = [row for row in reader if row["Latitude"] and row["Longitude"]]

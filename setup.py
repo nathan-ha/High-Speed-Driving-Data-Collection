@@ -3,8 +3,12 @@ import pickle
 from read_data import *
 from osm_get_speed_limits import get_speed_limits
 
-USE_CACHE = False
+USE_CACHE = False # For large datasets, this may make performance worse
 DATA_CACHE = os.path.join("data", "cache", "station.cache")
+
+MAINLINE = "ML"
+OFF_RAMP = "FR"
+
 
 
 def is_dir_empty(path):
@@ -34,7 +38,7 @@ def setup(station_data):
     # read csv data
     else:
         print("Reading station hourly data...")
-        read_data(station_data)
+        read_data(station_data, LANE_TYPE=MAINLINE)
         print("Reading station metadata...")
         read_metadata(station_data)
         if USE_CACHE:

@@ -7,7 +7,7 @@ DATA_PATH = os.path.join(
     "data", "station_hourly"
 )  # Input: directory containing hourly station data
 METADATA_PATH = os.path.join(
-    "data", "station_meta"
+    "data", "station_metadata"
 )  # Input: directory containing station metadata files
 STATION_COORDS = os.path.join(
     "data", "station_coordinates.csv"
@@ -15,7 +15,7 @@ STATION_COORDS = os.path.join(
 
 
 # puts data from station hourly file into a dictionary
-def read_data(station_data):
+def read_data(station_data, LANE_TYPE = "ML"):
     count = 0
     pathlist = Path(DATA_PATH).rglob("*.txt")
     for path in pathlist:
@@ -26,8 +26,14 @@ def read_data(station_data):
                 timestamp = row[0]
                 station = row[1]
                 route = row[3]
+                # TODO remove this line when scaling program up
+                # only analyze the 10 freeway right now
+                if int(route) != 10:
+                    continue 
                 travel_direction = row[4]
                 lane_type = row[5]
+                if lane_type != LANE_TYPE:
+                    continue
                 station_length = row[6]
                 num_samples = row[7]
                 percent_observed = row[8]
@@ -35,18 +41,18 @@ def read_data(station_data):
                 avg_occupancy = row[10]
                 avg_speed = row[11]
 
-                # TODO remove this line when scaling program up
-                # only analyze the 10 freeway right now
-                if int(route) != 10:
-                    continue 
+                # filter out incomplete data points
+                if not station_length or not total_flow or not avg_speed:
+                    continue
+
 
                 if station not in station_data:
                     station_data[station] = {
-                        "district": district,
-                        "route": route,
+                        "district": int(district),
+                        "route": int(route),
                         "travel_direction": travel_direction,
                         "lane_type": lane_type,
-                        "station_length": station_length,
+                        "station_length": float(station_length),
                         "num_samples": {},
                         "percent_observed": {},
                         "total_flow": {},
@@ -54,11 +60,11 @@ def read_data(station_data):
                         "avg_speed": {},
                     }
 
-                station_data[station]["num_samples"][timestamp] = num_samples
-                station_data[station]["percent_observed"][timestamp] = percent_observed
-                station_data[station]["total_flow"][timestamp] = total_flow
-                station_data[station]["avg_occupancy"][timestamp] = avg_occupancy
-                station_data[station]["avg_speed"][timestamp] = avg_speed
+                station_data[station]["num_samples"][timestamp] = int(num_samples)
+                station_data[station]["percent_observed"][timestamp] = float(percent_observed)
+                station_data[station]["total_flow"][timestamp] = float(total_flow)
+                station_data[station]["avg_occupancy"][timestamp] = float(avg_occupancy)
+                station_data[station]["avg_speed"][timestamp] = float(avg_speed)
                 count += 1
                 if count % 10000 == 0:
                     print(f"Read {count:,} data rows...", end="\r")
