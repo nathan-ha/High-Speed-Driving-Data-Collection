@@ -16,7 +16,7 @@ def is_dir_empty(path):
         return not any(it)
 
 
-def setup(station_data):
+def setup(station_data, lane_type=MAINLINE):
     print("Starting...")
 
     # create data directories if they don't already exist
@@ -38,7 +38,7 @@ def setup(station_data):
     # read csv data
     else:
         print("Reading station hourly data...")
-        read_data(station_data, LANE_TYPE=MAINLINE)
+        read_data(station_data, LANE_TYPE=lane_type)
         print("Reading station metadata...")
         read_metadata(station_data)
         if USE_CACHE:
