@@ -3,8 +3,10 @@ import pickle
 from read_data import *
 from osm_get_speed_limits import get_speed_limits
 
+RESULTS_DIR = os.path.join("data", "results")
 USE_CACHE = False # For large datasets, this may make performance worse
 DATA_CACHE = os.path.join("data", "cache", "station.cache")
+ERRORS_FILE = os.path.join(RESULTS_DIR, "errors.txt")
 
 MAINLINE = "ML"
 OFF_RAMP = "FR"
@@ -45,6 +47,9 @@ def setup(station_data, lane_type=MAINLINE):
             print("Saving data to cache...")
             with open(DATA_CACHE, "wb") as f:
                 pickle.dump(station_data, f)
+                
+    with open(ERRORS_FILE, "w") as f:
+        f.write("")
 
     print("Reading OSM data...")
     get_speed_limits(station_data)

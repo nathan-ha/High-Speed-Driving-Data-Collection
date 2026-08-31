@@ -28,8 +28,8 @@ def read_data(station_data, LANE_TYPE = "ML"):
                 route = row[3]
                 # TODO remove this line when scaling program up
                 # only analyze the 10 freeway right now
-                if int(route) != 10:
-                    continue 
+                # if int(route) != 10:
+                #     continue 
                 travel_direction = row[4]
                 lane_type = row[5]
                 if lane_type != LANE_TYPE:
@@ -69,6 +69,7 @@ def read_data(station_data, LANE_TYPE = "ML"):
                 if count % 10000 == 0:
                     print(f"Read {count:,} data rows...", end="\r")
     print(f"Read {count:,} data rows...")
+    print(f"Found {len(station_data)} stations")
 
 
 # puts data from station metadata into a dictionary
@@ -88,8 +89,9 @@ def read_metadata(station_data):
 
                 for row in csv_reader:
                     station = row[0]
+                    # metadata-only stations are not useful
                     if station not in station_data:
-                        station_data[station] = {}
+                        continue
 
                     freeway_number = row[1]
                     freeway_direction = row[2]
@@ -128,3 +130,4 @@ def read_metadata(station_data):
                     if count % 10000 == 0:
                         print(f"Read {count:,} metadata rows...", end="\r")
         print(f"Read {count:,} metadata rows...")
+        print(f"Found {len(station_data)} stations")
