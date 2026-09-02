@@ -26,8 +26,7 @@ def read_data(station_data, LANE_TYPE = "ML"):
                 timestamp = row[0]
                 station = row[1]
                 route = row[3]
-                # TODO remove this line when scaling program up
-                # only analyze the 10 freeway right now
+                # use this line to filter highways out
                 # if int(route) != 10:
                 #     continue 
                 travel_direction = row[4]
@@ -93,8 +92,8 @@ def read_metadata(station_data):
                     if station not in station_data:
                         continue
 
-                    freeway_number = row[1]
-                    freeway_direction = row[2]
+                    highway_number = row[1]
+                    highway_direction = row[2]
                     district = row[3]
                     county = row[4]
                     city = row[5]
@@ -109,8 +108,8 @@ def read_metadata(station_data):
 
                     station_data[station].update(
                         {
-                            "freeway_number": freeway_number,
-                            "freeway_direction": freeway_direction,
+                            "highway_number": highway_number,
+                            "highway_direction": highway_direction,
                             "county": county,
                             "city": city,
                             "state_postmile": state_postmile,

@@ -8,9 +8,6 @@ import pandas as pd
 from setup import RESULTS_DIR
 from setup import ERRORS_FILE
 
-RESULTS_PLOTS_DIR = os.path.join(RESULTS_DIR, "plots")
-
-
 def plot_california_speed_map(station_data):
     stations = []
     error_lines = []
@@ -44,7 +41,7 @@ def plot_california_speed_map(station_data):
         stations.append(
             {
                 "station": station,
-                "freeway": data["route"],
+                "highway": data["route"],
                 "latitude": latitude,
                 "longitude": longitude,
                 "average_speed": average_speed,
@@ -53,7 +50,7 @@ def plot_california_speed_map(station_data):
     summary = [
         f"\n\nSUMMARY:",
         f"Total number of stations: {len(station_data)}",
-        f"Could not map {error_count_missing_fields} stations (missing lat/lon/avg_speed/freeway)",
+        f"Could not map {error_count_missing_fields} stations (missing lat/lon/avg_speed/highway)",
         "\n\n",
     ]
     error = "\n".join(error_lines + summary)
@@ -78,22 +75,22 @@ def plot_california_speed_map(station_data):
     # Contextily requires Web Mercator coordinates
     gdf = gdf.to_crs(epsg=3857)
 
-    # Plot one map for each freeway
-    for freeway in sorted(gdf["freeway"].unique()):
-        freeway_gdf = gdf[gdf["freeway"] == freeway]
+    # Plot one map for each highway
+    for highway in sorted(gdf["highway"].unique()):
+        highway_gdf = gdf[gdf["highway"] == highway]
 
-        # Create freeway directory
-        freeway_plots_dir = os.path.join(
-            RESULTS_PLOTS_DIR,
-            f"freeway_{freeway}",
+        # Create highway directory
+        highway_plots_dir = os.path.join(
+            RESULTS_DIR,
+            f"highway_{highway}",
         )
-        os.makedirs(freeway_plots_dir, exist_ok=True)
+        os.makedirs(highway_plots_dir, exist_ok=True)
 
         # Create plot
         fig, ax = plt.subplots(figsize=(12, 16))
 
         # Plot stations
-        freeway_gdf.plot(
+        highway_gdf.plot(
             ax=ax,
             column="average_speed",
             cmap="RdYlGn",
@@ -109,10 +106,10 @@ def plot_california_speed_map(station_data):
         ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron)
 
         ax.set_axis_off()
-        plt.title(f"Freeway {freeway} Average Speeds", fontsize=16)
+        plt.title(f"highway {highway} Average Speeds", fontsize=16)
         plt.tight_layout()
 
-        plot_path = os.path.join(freeway_plots_dir, f"freeway_{freeway}_speed_map.png")
+        plot_path = os.path.join(highway_plots_dir, f"highway_{highway}_speed_map.png")
 
         plt.savefig(plot_path, dpi=300, bbox_inches="tight")
 
@@ -122,18 +119,18 @@ def plot_california_speed_map(station_data):
 
 def plot_speed_bins(bins, lane_type):
     # Plot data
-    # {freeway: {district: {speed: total_vmt}}}
+    # {highway: {district: {speed: total_vmt}}}
     print("Plotting speed bins...")
-    os.makedirs(RESULTS_PLOTS_DIR, exist_ok=True)
-    freeway_data = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    highway_data = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
-    for district, freeways in bins.items():
-        for freeway, speeds in freeways.items():
+    for district, highways in bins.items():
+        for highway, speeds in highways.items():
             for speed, bin_vmt in speeds.items():
-                freeway_data[freeway][district][speed] += bin_vmt
+                highway_data[highway][district][speed] += bin_vmt
 
-    # Plot one figure for each freeway
-    for freeway, districts in freeway_data.items():
+    # Plot one figure for each highway
+    for highway, districts in highway_data.items():
         all_speeds = sorted(
             {
                 speed
@@ -146,12 +143,12 @@ def plot_speed_bins(bins, lane_type):
         x = np.arange(len(all_speeds))
         bar_width = 0.8 / len(district_names)
 
-        # Create freeway directory
-        freeway_plots_dir = os.path.join(
-            RESULTS_PLOTS_DIR,
-            f"freeway_{freeway}",
+        # Create highway directory
+        highway_plots_dir = os.path.join(
+            RESULTS_DIR,
+            f"highway_{highway}",
         )
-        os.makedirs(freeway_plots_dir, exist_ok=True)
+        os.makedirs(highway_plots_dir, exist_ok=True)
 
         plt.figure(figsize=(14, 8))
 
@@ -182,12 +179,12 @@ def plot_speed_bins(bins, lane_type):
         plt.xticks(x, all_speeds)
         plt.xlabel("Speed (mph)")
         plt.ylabel("Normalized VMT")
-        plt.title(f"Freeway {freeway}")
+        plt.title(f"highway {highway}")
         plt.legend(title="District")
 
         plot_path = os.path.join(
-            freeway_plots_dir,
-            f"freeway_{freeway}_{lane_type}.png",
+            highway_plots_dir,
+            f"highway_{highway}_{lane_type}.png",
         )
 
         plt.tight_layout()
@@ -199,15 +196,15 @@ def plot_speed_bins(bins, lane_type):
 def plot_vmt_hourly(vmt_hourly, lane_type):
     print("Plotting speed hourly VMT distribution...")
 
-    freeway_data = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    highway_data = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
-    for district, freeways in vmt_hourly.items():
-        for freeway, hours in freeways.items():
+    for district, highways in vmt_hourly.items():
+        for highway, hours in highways.items():
             for hour, vmt in hours.items():
-                freeway_data[freeway][district][hour] += vmt
+                highway_data[highway][district][hour] += vmt
 
-    for freeway, districts in freeway_data.items():
-        # Plot one figure for each freeway
+    for highway, districts in highway_data.items():
+        # Plot one figure for each highway
         all_hours = sorted(
             {hour for district_hours in districts.values() for hour in district_hours}
         )
@@ -216,12 +213,12 @@ def plot_vmt_hourly(vmt_hourly, lane_type):
         x = np.arange(len(all_hours))
         bar_width = 0.8 / len(district_names)
 
-        # Create freeway directory
-        freeway_plots_dir = os.path.join(
-            RESULTS_PLOTS_DIR,
-            f"freeway_{freeway}",
+        # Create highway directory
+        highway_plots_dir = os.path.join(
+            RESULTS_DIR,
+            f"highway_{highway}",
         )
-        os.makedirs(freeway_plots_dir, exist_ok=True)
+        os.makedirs(highway_plots_dir, exist_ok=True)
 
         plt.figure(figsize=(14, 8))
 
@@ -251,12 +248,12 @@ def plot_vmt_hourly(vmt_hourly, lane_type):
         plt.xticks(x, all_hours)
         plt.xlabel("Hour")
         plt.ylabel("Normalized VMT")
-        plt.title(f"Freeway {freeway} Hourly VMT Distribution")
+        plt.title(f"highway {highway} Hourly VMT Distribution")
         plt.legend(title="District")
 
         plot_path = os.path.join(
-            freeway_plots_dir,
-            f"freeway_{freeway}_hourly_{lane_type}.png",
+            highway_plots_dir,
+            f"highway_{highway}_hourly_{lane_type}.png",
         )
 
         plt.tight_layout()

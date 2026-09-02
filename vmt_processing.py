@@ -5,17 +5,16 @@ from setup import RESULTS_DIR, ERRORS_FILE
 
 RESULTS_SPEED_BIN_PATH = os.path.join(RESULTS_DIR, "speed_bin.csv")
 RESULTS_VMT_HOURLY_PATH = os.path.join(RESULTS_DIR, "vmt_hourly_distribution.csv")
-RESULTS_ABOVE_THRESH_PATH = os.path.join(RESULTS_DIR, "above_thresholds.txt")
-RESULTS_ABOVE_SPEED_LIMIT = os.path.join(RESULTS_DIR, "above_speed_limit.txt")
-
+SPEED_MIN = 55
 
 def calculate_vmt(station_data, thresholds):
     # {district : {#mph : vmt}}
-    total_vmt = 0
+    total_vmt = defaultdict(float)
     vmt_above = defaultdict(lambda: {threshold: 0 for threshold in thresholds})
     vmt_above_limit = defaultdict(float)
     vmt_above_limit_5 = defaultdict(float)
     vmt_above_limit_10 = defaultdict(float)
+    total_vmt_valid_speed_limit = defaultdict(float)
     count = 0
     print("Creating Speed Bins...")
     error_count_speed_limit = 0
@@ -23,7 +22,7 @@ def calculate_vmt(station_data, thresholds):
     error_count_total_flow = 0
     error_count_invalid_speed = 0
     error_lines = []
-    # {district: {freeway: {speed_bin: vmt}}}
+    # {district: {highway: {speed_bin: vmt}}}
     bins = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     vmt_hourly = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
@@ -35,7 +34,7 @@ def calculate_vmt(station_data, thresholds):
             continue
 
         speed_limit = data.get("speed_limit")
-        valid_speed_limit = speed_limit is not None and speed_limit > 0
+        valid_speed_limit = speed_limit is not None and speed_limit >= SPEED_MIN
 
         if not valid_speed_limit:
             error_lines.append(f"Could not get speed limit for station {station}")
@@ -59,36 +58,39 @@ def calculate_vmt(station_data, thresholds):
                 error_count_invalid_speed += 1
                 continue
 
+            highway = data["route"]
+            district = data["district"]
+
             # VMT calculation
             flow = data["total_flow"][timestamp]
             vmt = flow * data["station_length"]
-            total_vmt += vmt
+            total_vmt[highway] += vmt
 
-            freeway = data["route"]
-            district = data["district"]
 
             # VMT above each threshold
             for threshold in thresholds:
                 if avg_speed > threshold:
-                    vmt_above[freeway][threshold] += vmt
+                    vmt_above[highway][threshold] += vmt
 
             # VMT above posted speed limit
             if valid_speed_limit:
+                total_vmt_valid_speed_limit[highway] += vmt
+
                 if avg_speed > speed_limit:
-                    vmt_above_limit[freeway] += vmt
+                    vmt_above_limit[highway] += vmt
 
                 if avg_speed > speed_limit + 5:
-                    vmt_above_limit_5[freeway] += vmt
+                    vmt_above_limit_5[highway] += vmt
 
                 if avg_speed > speed_limit + 10:
-                    vmt_above_limit_10[freeway] += vmt
+                    vmt_above_limit_10[highway] += vmt
 
             # Add VMT to speed bin
             speed_bin = int(avg_speed / 5 + 0.5) * 5
-            bins[district][freeway][speed_bin] += vmt
+            bins[district][highway][speed_bin] += vmt
 
             hour = int(timestamp.split(" ")[1].split(":")[0])
-            vmt_hourly[district][freeway][hour] += vmt
+            vmt_hourly[district][highway][hour] += vmt
 
             count += 1
 
@@ -121,6 +123,7 @@ def calculate_vmt(station_data, thresholds):
         vmt_above_limit,
         vmt_above_limit_5,
         vmt_above_limit_10,
+        total_vmt_valid_speed_limit,
     )
 
 
@@ -129,12 +132,12 @@ def save_speed_bins(bins):
     print("Saving speed bin results...")
 
     with open(RESULTS_SPEED_BIN_PATH, "w", newline="") as f:
-        fieldnames = ["district", "freeway", "speed", "total_vmt"]
+        fieldnames = ["district", "highway", "speed", "total_vmt"]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
-        for district, freeways in bins.items():
-            for freeway, speeds in freeways.items():
+        for district, highways in bins.items():
+            for highway, speeds in highways.items():
                 for speed, bin_vmt in speeds.items():
                     if speed == 0:
                         continue
@@ -142,7 +145,7 @@ def save_speed_bins(bins):
                     writer.writerow(
                         {
                             "district": district,
-                            "freeway": freeway,
+                            "highway": highway,
                             "speed": speed,
                             "total_vmt": bin_vmt,
                         }
@@ -154,17 +157,17 @@ def save_vmt_hourly(vmt_hourly):
     print("Saving vmt hourly distribution results...")
 
     with open(RESULTS_VMT_HOURLY_PATH, "w", newline="") as f:
-        fieldnames = ["district", "freeway", "hour", "total_vmt"]
+        fieldnames = ["district", "highway", "hour", "total_vmt"]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
-        for district, freeways in vmt_hourly.items():
-            for freeway, hours in freeways.items():
+        for district, highways in vmt_hourly.items():
+            for highway, hours in highways.items():
                 for hour, vmt in hours.items():
                     writer.writerow(
                         {
                             "district": district,
-                            "freeway": freeway,
+                            "highway": highway,
                             "hour": hour,
                             "total_vmt": vmt,
                         }
@@ -175,15 +178,17 @@ def save_above_thresholds(thresholds, vmt_above, total_vmt):
     # print fraction of VMT above threshold:
     print("\nVMT fractions:")
 
-    with open(RESULTS_ABOVE_THRESH_PATH, "w", newline="") as f:
-        for freeway, threshold_vmt in vmt_above.items():
-            s = f"\nFreeway {freeway}:\n"
-            print(s, end="")
-            f.write(s)
-
+    for highway, threshold_vmt in vmt_above.items():
+        highway_plots_dir = os.path.join(
+            RESULTS_DIR,
+            f"highway_{highway}",
+        )
+        os.makedirs(highway_plots_dir, exist_ok=True)
+        path = os.path.join(highway_plots_dir, f"highway_{highway}_above_speeds.txt")
+        with open(path, "w", newline="") as f:
+            f.write("VMT Fractions:\n")
             for threshold in thresholds:
-                fraction = threshold_vmt[threshold] / total_vmt if total_vmt else 0
-
+                fraction = threshold_vmt[threshold] / total_vmt[highway] if total_vmt[highway] else 0
                 s = f"Above {threshold} mph: {fraction:.4%}\n"
                 print(s, end="")
                 f.write(s)
@@ -193,21 +198,48 @@ def save_above_speed_limit(
     vmt_above_limit,
     vmt_above_limit_5,
     vmt_above_limit_10,
-    total_vmt,
+    total_vmt_valid_speed_limit,
 ):
     # print fraction of VMT above speed limit:
-    with open(RESULTS_ABOVE_SPEED_LIMIT, "w", newline="") as f:
-        for freeway in vmt_above_limit:
+    for highway in vmt_above_limit:
+        highway_plots_dir = os.path.join(
+            RESULTS_DIR,
+            f"highway_{highway}",
+        )
+        os.makedirs(highway_plots_dir, exist_ok=True)
+        path = os.path.join(highway_plots_dir, f"highway_{highway}_above_speeds.txt")
+        with open(path, "a", newline="") as f:
             s = (
-                f"\nFreeway {freeway}:"
                 "\nVMT fractions relative to the posted speed limit:\n"
                 f"Above the speed limit: "
-                f"{vmt_above_limit[freeway] / total_vmt:.4%}\n"
+                f"{vmt_above_limit[highway] / total_vmt_valid_speed_limit[highway]:.4%}\n"
                 f"Above the speed limit +5 mph: "
-                f"{vmt_above_limit_5[freeway] / total_vmt:.4%}\n"
+                f"{vmt_above_limit_5[highway] / total_vmt_valid_speed_limit[highway]:.4%}\n"
                 f"Above the speed limit +10 mph: "
-                f"{vmt_above_limit_10[freeway] / total_vmt:.4%}"
+                f"{vmt_above_limit_10[highway] / total_vmt_valid_speed_limit[highway]:.4%}"
             )
-
             print(s)
             f.write(s + "\n")
+
+
+def save_above_speeds(
+    thresholds,
+    vmt_above,
+    total_vmt,
+    vmt_above_limit,
+    vmt_above_limit_5,
+    vmt_above_limit_10,
+    total_vmt_valid_speed_limit,
+):
+    
+    save_above_thresholds(
+        thresholds,
+        vmt_above,
+        total_vmt,
+    )
+    save_above_speed_limit(
+        vmt_above_limit,
+        vmt_above_limit_5,
+        vmt_above_limit_10,
+        total_vmt_valid_speed_limit,
+    )
