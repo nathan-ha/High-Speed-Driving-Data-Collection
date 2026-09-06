@@ -4,7 +4,7 @@ from plots import *
 import time
 
 USE_MAINLINE = True
-THRESHOLDS = [65, 70, 75, 80, 85, 90]
+THRESHOLDS = [55, 65, 70, 75, 80, 85, 90]
 
 if __name__ == "__main__":
     start_time = time.time()
@@ -14,18 +14,18 @@ if __name__ == "__main__":
 
     # Process data
     (
-        bins,
-        vmt_hourly,
+        speed_bins,
+        vmt_hourly, # used for generating time-of-day vmt bins
         total_vmt,
-        vmt_above,
+        vmt_above, # vmt above thresholds (65, 70, 75mph, etc.)
         vmt_above_limit,
         vmt_above_limit_5,
         vmt_above_limit_10,
-        total_vmt_valid_speed_limit,
+        total_vmt_valid_speed_limit, # filtered out station vmt with no valid speed limits
     ) = calculate_vmt(station_data, THRESHOLDS)
 
     # Save data
-    save_speed_bins(bins)
+    save_speed_bins(speed_bins)
     save_vmt_hourly(vmt_hourly)
     save_above_speeds(
         THRESHOLDS,
@@ -38,8 +38,9 @@ if __name__ == "__main__":
     )
 
     # Plot data
-    plot_speed_bins(bins, lane_type)
+    plot_speed_bins(speed_bins, lane_type)
     plot_vmt_hourly(vmt_hourly, lane_type)
+    plot_speed_limit_coverage(station_data)
     plot_california_speed_map(station_data)
     
     time_elapsed = time.time() - start_time

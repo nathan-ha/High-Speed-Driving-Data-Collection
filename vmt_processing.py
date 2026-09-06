@@ -5,7 +5,7 @@ from setup import RESULTS_DIR, ERRORS_FILE
 
 RESULTS_SPEED_BIN_PATH = os.path.join(RESULTS_DIR, "speed_bin.csv")
 RESULTS_VMT_HOURLY_PATH = os.path.join(RESULTS_DIR, "vmt_hourly_distribution.csv")
-SPEED_MIN = 55
+SPEED_MIN = 15
 
 def calculate_vmt(station_data, thresholds):
     # {district : {#mph : vmt}}
@@ -86,11 +86,11 @@ def calculate_vmt(station_data, thresholds):
                     vmt_above_limit_10[highway] += vmt
 
             # Add VMT to speed bin
-            speed_bin = int(avg_speed / 5 + 0.5) * 5
-            bins[district][highway][speed_bin] += vmt
+            speed_bin = emfac_round(avg_speed)
+            bins[highway][district][speed_bin] += vmt
 
             hour = int(timestamp.split(" ")[1].split(":")[0])
-            vmt_hourly[district][highway][hour] += vmt
+            vmt_hourly[highway][district][hour] += vmt
 
             count += 1
 
@@ -190,7 +190,7 @@ def save_above_thresholds(thresholds, vmt_above, total_vmt):
             for threshold in thresholds:
                 fraction = threshold_vmt[threshold] / total_vmt[highway] if total_vmt[highway] else 0
                 s = f"Above {threshold} mph: {fraction:.4%}\n"
-                print(s, end="")
+                # print(s, end="")
                 f.write(s)
 
 
@@ -218,8 +218,46 @@ def save_above_speed_limit(
                 f"Above the speed limit +10 mph: "
                 f"{vmt_above_limit_10[highway] / total_vmt_valid_speed_limit[highway]:.4%}"
             )
-            print(s)
+            # print(s)
             f.write(s + "\n")
+
+def emfac_round(speed):
+    if speed <= 5.0:
+        return 5
+    elif speed <= 10.0:
+        return 10
+    elif speed <= 15.0:
+        return 15
+    elif speed <= 20.0:
+        return 20
+    elif speed <= 25.0:
+        return 25
+    elif speed <= 30.0:
+        return 30
+    elif speed <= 35.0:
+        return 35
+    elif speed <= 40.0:
+        return 40
+    elif speed <= 45.0:
+        return 45
+    elif speed <= 50.0:
+        return 50
+    elif speed <= 55.0:
+        return 55
+    elif speed <= 60.0:
+        return 60
+    elif speed <= 65.0:
+        return 65
+    elif speed <= 70.0:
+        return 70
+    elif speed <= 75.0:
+        return 75
+    elif speed <= 80.0:
+        return 80
+    elif speed <= 85.0:
+        return 85
+    else:
+        return 90
 
 
 def save_above_speeds(

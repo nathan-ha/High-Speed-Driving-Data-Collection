@@ -8,6 +8,7 @@ import pandas as pd
 from setup import RESULTS_DIR
 from setup import ERRORS_FILE
 
+
 def plot_california_speed_map(station_data):
     stations = []
     error_lines = []
@@ -122,15 +123,9 @@ def plot_speed_bins(bins, lane_type):
     # {highway: {district: {speed: total_vmt}}}
     print("Plotting speed bins...")
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    highway_data = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
-
-    for district, highways in bins.items():
-        for highway, speeds in highways.items():
-            for speed, bin_vmt in speeds.items():
-                highway_data[highway][district][speed] += bin_vmt
 
     # Plot one figure for each highway
-    for highway, districts in highway_data.items():
+    for highway, districts in bins.items():
         all_speeds = sorted(
             {
                 speed
@@ -154,18 +149,9 @@ def plot_speed_bins(bins, lane_type):
 
         for i, district in enumerate(district_names):
             # Get raw VMT values
-            y = np.array(
-                [districts[district].get(speed, 0) for speed in all_speeds], dtype=float
-            )
-
-            # High-low (min-max) normalization
-            min_value = np.min(y)
-            max_value = np.max(y)
-
-            if max_value != min_value:
-                normalized = (y - min_value) / (max_value - min_value)
-            else:
-                normalized = np.zeros_like(y)
+            highway_district_speed_bins = [districts[district][speed] for speed in all_speeds]
+            y = np.array(highway_district_speed_bins)
+            normalized = y / sum(highway_district_speed_bins) * 100
 
             offset = (i - (len(district_names) - 1) / 2) * bar_width
 
@@ -178,7 +164,7 @@ def plot_speed_bins(bins, lane_type):
 
         plt.xticks(x, all_speeds)
         plt.xlabel("Speed (mph)")
-        plt.ylabel("Normalized VMT")
+        plt.ylabel("% of VMT")
         plt.title(f"highway {highway}")
         plt.legend(title="District")
 
@@ -195,19 +181,10 @@ def plot_speed_bins(bins, lane_type):
 
 def plot_vmt_hourly(vmt_hourly, lane_type):
     print("Plotting speed hourly VMT distribution...")
+    all_hours = range(24)
 
-    highway_data = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
-
-    for district, highways in vmt_hourly.items():
-        for highway, hours in highways.items():
-            for hour, vmt in hours.items():
-                highway_data[highway][district][hour] += vmt
-
-    for highway, districts in highway_data.items():
+    for highway, districts in vmt_hourly.items():
         # Plot one figure for each highway
-        all_hours = sorted(
-            {hour for district_hours in districts.values() for hour in district_hours}
-        )
 
         district_names = sorted(districts.keys())
         x = np.arange(len(all_hours))
@@ -223,19 +200,9 @@ def plot_vmt_hourly(vmt_hourly, lane_type):
         plt.figure(figsize=(14, 8))
 
         for i, district in enumerate(district_names):
-            y = np.array(
-                [districts[district].get(hour, 0) for hour in all_hours], dtype=float
-            )
-
-            # High-low (min-max) normalization
-            min_value = np.min(y)
-            max_value = np.max(y)
-
-            if max_value != min_value:
-                normalized = (y - min_value) / (max_value - min_value)
-            else:
-                normalized = np.zeros_like(y)
-
+            highway_district_bins = [districts[district][hour] for hour in all_hours]
+            y = np.array(highway_district_bins)
+            normalized = y / sum(highway_district_bins) * 100
             offset = (i - (len(district_names) - 1) / 2) * bar_width
 
             plt.bar(
@@ -245,9 +212,9 @@ def plot_vmt_hourly(vmt_hourly, lane_type):
                 label=f"District {district}",
             )
 
-        plt.xticks(x, all_hours)
+        plt.xticks(x, [f"{hour}-{hour+1}" for hour in all_hours])
         plt.xlabel("Hour")
-        plt.ylabel("Normalized VMT")
+        plt.ylabel("% of Total VMT")
         plt.title(f"highway {highway} Hourly VMT Distribution")
         plt.legend(title="District")
 
@@ -258,5 +225,48 @@ def plot_vmt_hourly(vmt_hourly, lane_type):
 
         plt.tight_layout()
         plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+        print(f"Saved {plot_path}")
+        plt.close()
+
+
+def plot_speed_limit_coverage(station_data):
+    speed_proportions = defaultdict(lambda: defaultdict(float))
+    error_lines = []
+
+    for station, data in station_data.items():
+        highway = data["route"]
+        speed_limit = data.get("speed_limit")
+
+        if speed_limit is None:
+            error_lines.append(
+                f"Could not plot speed coverage for station {station}"
+            )
+            continue
+
+        speed_proportions[highway][speed_limit] += data["station_length"]
+
+    # pie chart
+    for highway, proportions in speed_proportions.items():
+        speed_limits = sorted(proportions.keys())
+        lengths = [proportions[speed_limit] for speed_limit in speed_limits]
+        labels = [f"{speed_limit} mph" for speed_limit in speed_limits]
+        fig, ax = plt.subplots()
+        ax.pie(
+            lengths,
+            labels=labels,
+            autopct="%1.1f%%"
+        )
+        ax.set_title(f"Highway {highway} Speed Limit Coverage")
+        highway_plots_dir = os.path.join(
+            RESULTS_DIR,
+            f"highway_{highway}"
+        )
+        os.makedirs(highway_plots_dir, exist_ok=True)
+
+        plot_path = os.path.join(
+            highway_plots_dir,
+            f"highway_{highway}_speed_limit_coverage.png"
+        )
+        fig.savefig(plot_path, dpi=300, bbox_inches="tight")
         print(f"Saved {plot_path}")
         plt.close()
