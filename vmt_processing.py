@@ -31,6 +31,13 @@ def calculate_vmt(station_data, thresholds):
     vmt_speed_limit = defaultdict(
         lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     )
+    vmt_speed_bin_hourly = defaultdict(
+        lambda: defaultdict(
+            lambda: defaultdict(
+                lambda: defaultdict(float)
+            )
+        )
+    )
 
     for station, data in station_data.items():
         # Error checks
@@ -95,6 +102,7 @@ def calculate_vmt(station_data, thresholds):
             # Add VMT to speed bin
             speed_bin = emfac_round(avg_speed)
             bins[highway][district][speed_bin] += vmt
+            vmt_speed_bin_hourly[highway][district][hour][speed_bin] += vmt
             if valid_speed_limit:
                 vmt_speed_limit[highway][district][speed_limit][speed_bin] += vmt
             vmt_hourly[highway][district][hour] += vmt
@@ -122,6 +130,7 @@ def calculate_vmt(station_data, thresholds):
         bins,
         vmt_hourly,
         vmt_above_hourly,
+        vmt_speed_bin_hourly,
         total_vmt,
         vmt_above,
         vmt_above_limit,
@@ -209,36 +218,6 @@ def save_vmt_hourly(vmt_hourly):
                             "total_vmt": vmt,
                         }
                     )
-
-
-# def save_above_thresholds(thresholds, vmt_above, total_vmt):
-#     path = os.path.join(RESULTS_DIR, "table_A_above_thresholds.csv")
-#     fieldnames = [
-#         "Highway",
-#         "District",
-#     ]
-#     for threshold in thresholds:
-#         fieldnames.append(f"%VMT Above {threshold} mph")
-
-#     with open(path, "w", newline="") as f:
-#         writer = csv.DictWriter(f, fieldnames=fieldnames)
-#         writer.writeheader()
-
-#         for highway, districts in vmt_above.items():
-#             for district, threshold_vmt in districts.items():
-#                 row = {
-#                     "Highway": highway,
-#                     "District": district,
-#                 }
-#                 for threshold in thresholds:
-#                     fraction = (
-#                         threshold_vmt[threshold] / total_vmt[highway][district]
-#                         if total_vmt[highway][district]
-#                         else 0
-#                     )
-#                     row[f"%VMT Above {threshold} mph"] = f"{fraction:.4%}"
-
-#                 writer.writerow(row)
 
 
 def save_above_thresholds(thresholds, vmt_above, total_vmt):
