@@ -48,6 +48,7 @@ def setup(station_data, lane_type=MAINLINE):
             with open(DATA_CACHE, "wb") as f:
                 pickle.dump(station_data, f)
                 
+    os.makedirs(RESULTS_DIR, exist_ok=True)
     with open(ERRORS_FILE, "w") as f:
         f.write("")
 
