@@ -13,6 +13,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+plt.rcParams.update(
+    {
+        "font.size": 14,
+        "axes.titlesize": 20,
+        "axes.labelsize": 16,
+        "xtick.labelsize": 14,
+        "ytick.labelsize": 14,
+        "legend.fontsize": 14,
+        "legend.title_fontsize": 16,
+        "figure.titlesize": 22,
+    }
+)
+
 
 def plot_california_speed_map(station_data):
     stations = []
@@ -160,19 +173,21 @@ def plot_speed_bins(vmt_speed_limit, lane_type):
             for speed_limit in district_data
         }
     )
+
     speed_limit_colors = {
         speed_limit: color
         for speed_limit, color in zip(
             global_speed_limits,
             [
-                "#1F77B4",  # Blue
-                "#FF7F0E",  # Orange
-                "#2CA02C",  # Green
-                "#D62728",  # Red
-                "#9467BD",  # Purple
-                "#8C564B",  # Brown
-                "#17BECF",  # Cyan
-            ],
+                "#0072B2",  # Blue
+                "#E69F00",  # Orange
+                "#00A878",  # Green
+                "#D55E00",  # Vermilion
+                "#CC79A7",  # Purple
+                "#00BFC4",  # Cyan
+                "#F0E442",  # Yellow
+                "#E7298A",  # Pink
+            ]
         )
     }
 
@@ -197,6 +212,7 @@ def plot_speed_bins(vmt_speed_limit, lane_type):
         if not all_speeds:
             continue
 
+        speed_bin_labels = [format_speed_bin_label(s) for s in all_speeds]
         # Calculate total VMT for this highway
         total_district_vmt = {}
         hatches = [
@@ -231,7 +247,7 @@ def plot_speed_bins(vmt_speed_limit, lane_type):
             )
 
         # Make the graph wider when there are more speed bins or districts
-        fig_width = max(16, len(all_districts) * 3)
+        fig_width = max(16, len(all_districts) * 4.5)
         fig, ax = plt.subplots(figsize=(fig_width, 8))
 
         x = np.arange(len(all_speeds))
@@ -301,12 +317,15 @@ def plot_speed_bins(vmt_speed_limit, lane_type):
             #         )
 
         ax.set_xticks(x)
-        ax.set_xticklabels(all_speeds)
-        ax.set_xlabel("Observed Speed (mph)")
-        ax.set_ylabel("% of VMT")
+        ax.set_xticklabels(speed_bin_labels, fontsize=13, rotation=30, ha="right")
+        ax.tick_params(axis="y", labelsize=14)
+        ax.set_xlabel("Observed Speed Range (mph)", fontsize=18, labelpad=10)
+        ax.set_ylabel("% of VMT", fontsize=18, labelpad=10)
         ax.set_title(
-            f"Highway {highway} VMT Distribution by Observed Speed "
-            f"and Posted Speed Limit"
+            f"Highway {highway} VMT Distribution by Observed Speed and Posted Speed Limit",
+            fontsize=20,
+            weight="bold",
+            pad=15,
         )
 
         # A little space above the bars so the top labels aren't clipped
@@ -360,7 +379,7 @@ def plot_vmt_hourly(vmt_hourly, lane_type):
         )
         os.makedirs(highway_plots_dir, exist_ok=True)
 
-        plt.figure(figsize=(14, 8))
+        plt.figure(figsize=(22, 8))
 
         for i, district in enumerate(district_names):
             highway_district_bins = [districts[district][hour] for hour in all_hours]
@@ -427,6 +446,21 @@ def plot_speed_limit_coverage(station_data):
         plt.close()
 
 
+def format_speed_bin_label(speed):
+    try:
+        speed_val = float(speed)
+    except (ValueError, TypeError):
+        return str(speed)
+
+    if speed_val <= 5:
+        return "≤ 5"
+    elif speed_val >= 90:
+        return "> 85"
+    else:
+        lower = int(speed_val - 5)
+        upper = int(speed_val)
+        return f"{lower}-{upper}"
+
 def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
     for highway, districts in vmt_speed_bin_hourly.items():
         highway_dir = os.path.join(
@@ -434,6 +468,7 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
             f"highway_{highway}",
         )
         os.makedirs(highway_dir, exist_ok=True)
+
         for district, hours in districts.items():
             # Get all speed bins that occur for this highway/district
             speed_bins = sorted(
@@ -444,10 +479,28 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
             speed_bins = [speed_bin for speed_bin in speed_bins if speed_bin > 0]
             if not speed_bins:
                 continue
+
             # Create table data
             table_data = []
+
             for hour in range(24):
                 row = []
+
+                # Calculate total VMT for this hour across all speed bins
+                hourly_total_vmt = sum(
+                    hours[hour][speed_bin] for speed_bin in speed_bins
+                )
+
+                # Percentage of total VMT for this highway/district
+                total_fraction = (
+                    hourly_total_vmt / total_vmt[highway][district]
+                    if total_vmt[highway][district]
+                    else 0
+                )
+
+                # Add total percentage as the first column
+                row.append(total_fraction * 100)
+
                 for speed_bin in speed_bins:
                     raw_vmt = hours[hour][speed_bin]
                     # Percentage of total VMT for this
@@ -458,9 +511,14 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
                         else 0
                     )
                     row.append(fraction * 100)
+
                 table_data.append(row)
+
             # Calculate total percentage for each speed bin
             total_row = []
+
+            # Total across all speed bins
+            total_row.append(100.0)
 
             for speed_bin in speed_bins:
                 speed_bin_vmt = sum(hours[hour][speed_bin] for hour in range(24))
@@ -471,18 +529,24 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
                 )
                 total_row.append(fraction * 100)
 
+            # Find maximum percentage for color scaling
+            max_value = max(
+                max(row[1:]) for row in table_data
+            )
+
             # Add total row
             table_data.append(total_row)
-            # Find maximum percentage for color scaling
-            max_value = max(max(row) for row in table_data)
+
             if max_value == 0:
                 max_value = 1
+
             # Green -> yellow -> red
             cmap = plt.cm.RdYlGn_r
             norm = mcolors.Normalize(
                 vmin=0,
                 vmax=max_value,
             )
+
             # Create figure
             fig_width = max(10, len(speed_bins) * 0.8)
             fig, ax = plt.subplots(figsize=(fig_width, 9))
@@ -493,7 +557,7 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
             row_labels.append("Total %VMT")
 
             # Create column labels
-            column_labels = [f"{speed_bin} mph" for speed_bin in speed_bins]
+            column_labels = ["Total"] + [f"{speed_bin} mph" for speed_bin in speed_bins]
 
             # Create table
             table = ax.table(
@@ -516,8 +580,8 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
             )
 
             # Color data cells
-            for row in range(len(table_data)):
-                for col in range(len(speed_bins)):
+            for row in range(len(table_data)-1):
+                for col in range(1, len(column_labels)):
                     value = table_data[row][col]
                     cell = table.get_celld()[(row + 1, col)]
                     cell.set_facecolor(cmap(norm(value)))
@@ -527,10 +591,15 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
                     else:
                         cell.get_text().set_color("black")
 
+            # Keep the Total column uncolored
+            for row in range(len(table_data)):
+                cell = table.get_celld()[(row + 1, 0)]
+                cell.set_facecolor("white")
+                cell.get_text().set_color("black")
+
             # Make the total row slightly more prominent
             total_row_index = len(table_data)
-
-            for col in range(len(speed_bins)):
+            for col in range(len(column_labels)):
                 cell = table.get_celld()[(total_row_index, col)]
                 cell.set_text_props(weight="bold")
 
@@ -540,7 +609,7 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
                 cell.set_text_props(weight="bold")
 
             # Make column headers bold
-            for col in range(len(speed_bins)):
+            for col in range(len(column_labels)):
                 cell = table.get_celld()[(0, col)]
                 cell.set_text_props(weight="bold")
 
@@ -556,16 +625,13 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
                 cmap=cmap,
                 norm=norm,
             )
-
             sm.set_array([])
-
             cbar = fig.colorbar(
                 sm,
                 ax=ax,
                 fraction=0.025,
                 pad=0.02,
             )
-
             cbar.set_label(
                 "% of Total VMT",
                 rotation=270,
@@ -583,5 +649,4 @@ def plot_vmt_speed_bin_hourly(vmt_speed_bin_hourly, total_vmt):
                 dpi=300,
                 bbox_inches="tight",
             )
-
             plt.close(fig)

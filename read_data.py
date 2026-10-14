@@ -15,12 +15,14 @@ STATION_COORDS = os.path.join(
 
 
 # puts data from station hourly file into a dictionary
-def read_data(station_data, LANE_TYPE = "ML"):
+def read_data(station_data, LANE_TYPE = "ML", DISTRICTS = (3, 4, 7, 8, 11, 12)):
     count = 0
     pathlist = Path(DATA_PATH).rglob("*.txt")
     for path in pathlist:
-        with open(str(path)) as csv_file:
+        with open(path) as csv_file:
             district = int(os.path.basename(str(path))[1:3]) # get district from file name
+            if district not in DISTRICTS:
+                continue
             csv_reader = reader(csv_file)
             for row in csv_reader:
                 timestamp = row[0]

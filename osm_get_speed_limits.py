@@ -70,7 +70,7 @@ def to_xyz(lat, lon):
 
 # Main OSM function
 def get_speed_limits(station_data):
-    print("STARTING SPEED LIMIT EXTRACTION")
+    print("Starting speed limit extraction...")
 
     error_lines = []
     error_count_missing_coords = 0
@@ -88,7 +88,6 @@ def get_speed_limits(station_data):
     road_speed = []
 
     start = time.time()
-
     for i, road in enumerate(roads):
         for point in road["coords"]:
             # save every road coordinate and their corresponding speed limit
@@ -111,20 +110,14 @@ def get_speed_limits(station_data):
 
     road_lat = np.array([p[0] for p in road_points])
     road_lon = np.array([p[1] for p in road_points])
-
     road_xyz = to_xyz(road_lat, road_lon)
 
     print("Building KD-tree...")
-
     start = time.time()
-
     tree = cKDTree(road_xyz)
-
     print(f"KD-tree built in {time.time()-start:.2f}s")
-
     # Load stations
     print("Loading stations...")
-
     stations = []
 
     for station_id, station in station_data.items():
@@ -137,7 +130,6 @@ def get_speed_limits(station_data):
             error_lines.append(f"Missing latitude/longitude for station {station_id}")
             error_count_missing_coords += 1
             continue
-
         stations.append(
             {
                 "route": station["route"],
@@ -146,7 +138,6 @@ def get_speed_limits(station_data):
                 "Longitude": station["longitude"],
             }
         )
-
     print(
         f"Loaded {len(stations):,} valid stations",
         end="\r",
@@ -154,32 +145,25 @@ def get_speed_limits(station_data):
 
     lat = np.array([float(x["Latitude"]) for x in stations])
     lon = np.array([float(x["Longitude"]) for x in stations])
-
     station_xyz = to_xyz(lat, lon)
-
     # Query stations
     print("\nFinding nearby roads...")
-
     start = time.time()
-
     # Search for all road vertices within this radius
     indexes = tree.query_ball_point(
         station_xyz,
         r=SEARCH_RADIUS,
     )
-
     print(
         f"Found nearby roads for {len(indexes):,} stations "
         f"in {time.time()-start:.2f}s",
         end="\r",
     )
-
     # Output
     print("\nWriting output CSV...")
 
     with open(OUTPUT_PATH, "w", newline="") as f:
         writer = csv.writer(f)
-
         writer.writerow(
             [
                 "highway",
@@ -187,38 +171,28 @@ def get_speed_limits(station_data):
                 "speed_limit",
             ]
         )
-
         for i, (station, nearby_indexes) in enumerate(
             zip(stations, indexes),
             start=1,
         ):
             speeds = []
-
             for idx in nearby_indexes:
                 speed = road_speed[idx]
-
                 digits = "".join(c for c in speed if c.isdigit())
-
                 if digits:
                     speeds.append(int(digits))
-
             if speeds:
                 # Use the largest speed limit found nearby
                 speed_limit = max(speeds)
-
             else:
                 # No speed limit found within SEARCH_RADIUS.
                 # Fall back to the nearest road vertex.
                 _, nearest_idx = tree.query(station_xyz[i - 1])
-
                 nearest_speed = road_speed[nearest_idx]
-
                 digits = "".join(c for c in nearest_speed if c.isdigit())
-
                 if digits:
                     # Use the nearest speed limit as a fallback
                     speed_limit = int(digits)
-
                     error_lines.append(
                         f"No speed limit found within "
                         f"{SEARCH_RADIUS} meters for station "
@@ -226,10 +200,8 @@ def get_speed_limits(station_data):
                         f"using nearest speed limit "
                         f"{speed_limit} mph"
                     )
-
                 else:
                     speed_limit = None
-
                     error_lines.append(
                         f"Could not find numeric speed limit "
                         f"for station "
@@ -237,7 +209,6 @@ def get_speed_limits(station_data):
                     )
 
                     error_count_missing_speed += 1
-
             writer.writerow(
                 [
                     station["route"],
@@ -245,7 +216,6 @@ def get_speed_limits(station_data):
                     speed_limit,
                 ]
             )
-
             if i % 10000 == 0:
                 print(
                     f"  Wrote {i:,} stations...",
@@ -258,14 +228,11 @@ def get_speed_limits(station_data):
         start=1,
     ):
         speeds = []
-
         for idx in nearby_indexes:
             speed = road_speed[idx]
-
             # Extract numeric speed value from OSM maxspeed tag
             # Example: "65 mph" -> 65
             digits = "".join(c for c in speed if c.isdigit())
-
             if digits:
                 speeds.append(int(digits))
 
@@ -277,11 +244,8 @@ def get_speed_limits(station_data):
             # No speed limit found within SEARCH_RADIUS.
             # Fall back to the nearest road vertex.
             _, nearest_idx = tree.query(station_xyz[i - 1])
-
             nearest_speed = road_speed[nearest_idx]
-
             digits = "".join(c for c in nearest_speed if c.isdigit())
-
             if digits:
                 # Use the nearest speed limit as a fallback
                 speed_limit = int(digits)
@@ -289,10 +253,8 @@ def get_speed_limits(station_data):
                 speed_limit = None
 
         station_id = station["Station_ID"]
-
         # Update existing station dictionary
         station_data[station_id]["speed_limit"] = speed_limit
-
         if i % 10000 == 0:
             print(
                 f"  Updated {i:,} stations...",
@@ -309,16 +271,10 @@ def get_speed_limits(station_data):
     ]
 
     error = "\n".join(error_lines + summary)
-
     print("\n".join(summary))
-
     from setup import ERRORS_FILE
-
     print(f"Detailed errors written to {ERRORS_FILE}")
-
     with open(ERRORS_FILE, "a") as f:
         f.write(error)
-
     print("Speed limits added to station dictionary.")
-
     print(f"Speed Limit Output: {OUTPUT_PATH}")
